@@ -53,11 +53,11 @@ const storage = multer.diskStorage({
     cb(null, './public/images/')
   },
   filename/*(ファイル名)*/: (req, file, cb) => {
-    const userId = 1;
-    console.log(req.body);
+    console.log(file);
 
     const imageFormat = "." + file.mimetype.split("/")[1]
-    const unipuePostId = file.originalname + userId + imageFormat;
+    const unipuePostId = file.originalname + imageFormat;
+    console.log("保存画像", unipuePostId)
     cb(null, unipuePostId);
   }
 })
@@ -69,7 +69,8 @@ const icon = multer.diskStorage({
     cb(null, './public/icon/')
   },
   filename/*(ファイル名)*/: (req, file, cb) => {
-    const userId = 16;
+    const userId = file.originalname;
+    console.log(file)
     console.log("000000000000000000000000000000000")
     console.log(file.mimetype)
     const imageFormat = "." + file.mimetype.split("/")[1]
@@ -136,7 +137,7 @@ app.post("/changeIcon",
     if (req.file) {
       saveIconName = user.user_id + "." + req.file.mimetype.split("/")[1];
     }
-    console.log(saveIconName);
+    // console.log(saveIconName);
 
 
     const sql = "UPDATE user SET name = ?, mail = ?, password = ?, icon = ?, profile = ? where user_id = ?"
@@ -160,7 +161,7 @@ app.post("/imagePost",
   (req, res, next) => {
     console.log("-----------------------------------------------------------------");
     console.log(req.body);
-    userId = 1;
+    const userId = req.body.userId;
 
     const file = req.file;
     const fileName = file.originalname;
@@ -168,11 +169,11 @@ app.post("/imagePost",
     const postText = req.body.postText;
 
     const imageFormat = "." + file.mimetype.split("/")[1]
-    const unipuePostId = fileName + userId;
+    const unipuePostId = fileName;
 
 
-    console.log("受付file ---> ", unipuePostId);
-    console.log("投稿本文 ---> ", postText);
+    // console.log("受付file ---> ", unipuePostId);
+    // console.log("投稿本文 ---> ", postText);
 
     // 投稿テーブル post に行追加
     const insertSql = "INSERT INTO `post` (`post_id`, `user_id`, `img`, `content`, `atTime`) VALUES(?, ?, ?, ?, now());"
@@ -183,7 +184,7 @@ app.post("/imagePost",
     // タグテーブル post_keyに行追加
     const insertTagSql = "INSERT INTO `post_key` (`post_id`, `key`) VALUES(?, ?);"
     tagArray.forEach(tag => {
-      console.log("タグの内容--->", tag);
+      // console.log("タグの内容--->", tag);
       con.query(insertTagSql, [unipuePostId, tag], function (err, result, fields) {
         if (err) throw err;
       });
@@ -196,18 +197,18 @@ app.post("/imagePost",
 // signUpPageからアクセス
 app.post("/signUp", (req, res) => {
   console.log("-----------------------------------------------------------------");
-  console.log("サインアップポストボタンクリック");
+  // console.log("サインアップポストボタンクリック");
   const emailV = req.body.email;
   const nemeV = req.body.name;
   const passwordV = req.body.password;
-  console.log(emailV, nemeV, passwordV);
+  // console.log(emailV, nemeV, passwordV);
 
   const checkSql = "select * from user where mail = ?"
   con.query(checkSql, [emailV], function (err, result, field) {
     if (err) throw err;
     let canInsert = false;
 
-    console.log("重複検査：" + result);
+    // console.log("重複検査：" + result);
     if (result.length === 0) {
       canInsert = true;
     } else {
@@ -220,10 +221,18 @@ app.post("/signUp", (req, res) => {
         if (err) throw err;
         // console.log(result);
 
-        res.send("成功");
+        //作成したアカウントをloginState保存のために再度ピックアップ
+        const loginInfoFetchSql = "select user_id,name,mail,icon,profile from user where mail = ?";
+        con.query(loginInfoFetchSql, [emailV], function (err, result) {
+          if (err) throw err;
+          // console.log(result[0])
+
+
+          res.send(result[0]);
+        })
       });
     } else {
-      res.send("email重複")
+      res.send()
     }
   });
 });
@@ -231,7 +240,7 @@ app.post("/signUp", (req, res) => {
 // --------------------------
 app.get("/getUserInfo", (req, res) => {
   const userId = req.query.userId;
-  console.log("検索userは", userId);
+  // console.log("検索userは", userId);
 
   const sql = "select user_id,icon,mail,name,profile from user where user_id = ?"
   con.query(sql, [userId], (err, result) => {
@@ -244,12 +253,12 @@ app.get("/getUserInfo", (req, res) => {
 app.get("/content", (req, res) => {
   console.log("-----------------------------------------------------------------");
   const seachImageName = req.query.seachImageName;
-  console.log("検索画像は", seachImageName);
+  // console.log("検索画像は", seachImageName);
   // 必要data userTable{user_id,icon,name} postTable{img,content}
   const sql = "select user.user_id,user.icon,user.name,post.img,post.content from post,user where post.user_id =user.user_id and post.img = ?";
   con.query(sql, [seachImageName], (err, result) => {
     if (err) throw err;
-    console.log(result[0]);
+    // console.log(result[0]);
     res.send(result[0]);
   })
 }); // end content
@@ -257,7 +266,7 @@ app.get("/content", (req, res) => {
 app.get("/getIconFile", (req, res) => {
   console.log("-----------------------------------------------------------------");
   const seachIconName = req.query.icon;
-  console.log("検索アイコンは", seachIconName);
+  // console.log("検索アイコンは", seachIconName);
 
   const imageDirectory = "./public/icon";
   const fullpathFileName = path.join(__dirname, imageDirectory, seachIconName)
@@ -274,24 +283,24 @@ app.get("/getIconFile", (req, res) => {
 app.get("/getImageName", (req, res) => {
   console.log("-----------------------------------------------------------------");
   let seachKey = req.query.seachKey;
-  console.log("送られてきたseachKey = ", seachKey);
+  // console.log("送られてきたseachKey = ", seachKey);
 
   if (seachKey === "undefined") {
-    console.log("paramが空：sqlはselect img from post limit 14となります");
+    // console.log("paramが空：sqlはselect img from post limit 14となります");
     const sql = "select img from post limit 14";
     con.query(sql, (err, result, fields) => {
       if (err) throw err;
-      console.log(result);
+      // console.log(result);
       res.send(result);
     });
     return
   } else {
-    console.log("paramが入力:sqlはseachKeyで検索されます")
+    // console.log("paramが入力:sqlはseachKeyで検索されます")
     seachKey = "%" + seachKey + "%";
     const sql = "select distinct(img) from post,post_key where post.post_id = post_key.post_id AND post_key.key like ? limit 14";
     con.query(sql, [seachKey], (err, result, fields) => {
       if (err) throw err;
-      console.log(result);
+      // console.log(result);
       res.send(result);
     });
   }// end if
@@ -305,7 +314,7 @@ app.get("/getUserPostImage", (req, res) => {
   const sql = "select post.img from user,post where user.user_id = post.user_id and user.user_id = ? limit 14"
   con.query(sql, [userId], (err, result) => {
     if (err) throw err;
-    console.log(result);
+    // console.log(result);
     res.send(result);
   })
 })
@@ -315,11 +324,11 @@ app.get("/getUserPostImageNext", (req, res) => {
   const seachUser = req.query.userId;
   const sql = "select post.img from post,user where user.user_id = post.user_id and atTime > (select atTime from post where img = ?) and user.user_id = ? limit 14"
 
-  console.log(lastImageName, seachUser);
+  // console.log(lastImageName, seachUser);
 
   con.query(sql, [lastImageName, seachUser], (err, result) => {
     if (err) throw err;
-    console.log(result);
+    // console.log(result);
     res.send(result);
   });
 });
@@ -327,24 +336,24 @@ app.get("/getUserPostImageNext", (req, res) => {
 
 app.get("/getImageNext", (req, res) => {
   console.log("-----------------------------------------------------------------");
-  console.log("リクエストデータは", req.query);
+  // console.log("リクエストデータは", req.query);
   const lastImageName = req.query.lastImageName;
   let seachKey = req.query.seachKey;
   if (!seachKey) {
-    console.log("---seachKeyがない時の処理---")
+    // console.log("---seachKeyがない時の処理---")
     const sql = "select img from post where atTime > (select atTime from post where img = ?) limit 14";
     con.query(sql, [lastImageName], (err, result) => {
       if (err) throw err;
-      console.log(result);
+      // console.log(result);
       res.send(result);
     });
   } else {
-    console.log(`---seachKeyが${seachKey}で存在する時の処理---`)
+    // console.log(`---seachKeyが${seachKey}で存在する時の処理---`)
     seachKey = "%" + seachKey + "%";
     const sql = "select distinct(post.img) from post,post_key where post.post_id = post_key.post_id and post_key.key like ? and atTime > (select atTime from post where img = ?) limit 14";
     con.query(sql, [seachKey, lastImageName], (err, result) => {
       if (err) throw err;
-      console.log(result);
+      // console.log(result);
       res.send(result);
     });
   }
@@ -367,7 +376,7 @@ app.get("/getImageFile", (req, res) => {
 //topPageからアクセス
 app.get("/redirector", (req, res) => {
   console.log("-----------------------------------------------------------------");
-  console.log("リダイレクト発火");
+  // console.log("リダイレクト発火");
   //データベース取得テスト
   res.send("リダイレクト");
 })
@@ -377,14 +386,14 @@ app.get("/redirector", (req, res) => {
 // loginPageからアクセス
 app.post("/login", (req, res) => {
   console.log("-----------------------------------------------------------------");
-  console.log("ログインポストボタンクリック");
+  // console.log("ログインポストボタンクリック");
   const mailKey = req.body.email;
   const passKey = req.body.pass;
   // console.log(mailKey, passKey);
 
-  const sql = "select * from user where mail = ? && password = ?";
+  const sql = "select user_id,name,mail,icon,profile from user where mail = ? && password = ?";
   con.query(sql, [mailKey, passKey], function (err, result, fields) {
-    console.log(result);
+    // console.log(result);
     let resultBool = false;
     if (result.length === 0) {
       resultBool = false;
@@ -392,7 +401,7 @@ app.post("/login", (req, res) => {
       resultBool = true;
     }
     if (err) throw err;
-    res.send(resultBool)
+    res.send(result)
   }); //end sql
 });
 
