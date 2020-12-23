@@ -151,7 +151,9 @@ app.post("/changeIcon",
     ])
 
 
-    res.send("画像アップロード成功");
+    // res.send("画像アップロード成功");
+    const resUserData = { ...user, icon: saveIconName, didChange: true };
+    res.send(resUserData);
   }
 )
 
