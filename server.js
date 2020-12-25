@@ -5,6 +5,7 @@ const passport = require('passport');
 const multer = require("multer");
 const path = require("path");
 const session = require("express-session");
+const fs = require('fs');
 
 
 
@@ -114,7 +115,7 @@ const con = mysql.createConnection({
   user: 'root',
   password: 'root',
   database: 'design_pool',
-  port: '8889'
+  port: '3306'
 });
 con.connect(function (err) {
   if (err) throw err;
@@ -150,12 +151,37 @@ app.post("/changeIcon",
       user.user_id
     ])
 
-
     // res.send("画像アップロード成功");
     const resUserData = { ...user, icon: saveIconName, didChange: true };
     res.send(resUserData);
   }
 )
+
+
+app.post("/postDelete", (req, res) => {
+  // 画像ファイル消去  
+  const imageName = req.body.name;
+  console.log(imageName)
+  fs.unlink('./public/images/' + imageName, (err) => {
+    if (err) throw err
+  })
+
+  // データベース投稿データ消去
+  const postName = req.body.name.split(".")[0];
+  console.log(postName)
+  const postSql = "delete from post where post_id = ?"
+  con.query(postSql, [postName], (err, result) => {
+    if (err) throw err
+    console.log(result[0])
+  })
+  const keySql = "delete from post_key where post_id = ?"
+  con.query(keySql, [postName], (err, result) => {
+    if (err) throw err
+    console.log(result)
+  })
+  res.send("ok")
+})
+
 
 //poolingPageからアクセス
 app.post("/imagePost",
@@ -376,12 +402,12 @@ app.get("/getImageFile", (req, res) => {
 
 
 //topPageからアクセス
-app.get("/redirector", (req, res) => {
-  console.log("-----------------------------------------------------------------");
-  // console.log("リダイレクト発火");
-  //データベース取得テスト
-  res.send("リダイレクト");
-})
+// app.get("/redirector", (req, res) => {
+//   console.log("-----------------------------------------------------------------");
+//   // console.log("リダイレクト発火");
+//   //データベース取得テスト
+//   res.send("リダイレクト");
+// })
 
 
 
